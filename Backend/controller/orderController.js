@@ -39,7 +39,8 @@ const GetPurchasePremium = async (req, res) => {
 
 const UpdateTransactionStatus = async (req, res) => {
   try {
-    const { paymentId, orderId, userId } = req.body;
+    const { paymentId, orderId } = req.body;
+    const userId = req.params.userId;
     const findOrder = await orderModel.findOne({ where: { orderId } });
     await findOrder.update({
       paymentId,

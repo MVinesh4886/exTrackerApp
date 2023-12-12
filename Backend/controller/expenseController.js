@@ -1,19 +1,26 @@
 const expenseModel = require("../model/expenseModel");
-const isLogin = require("../middleware/Auth");
+
 const userModel = require("../model/userModel");
 const sequelize = require("sequelize");
 const db = require("../config/database");
 const AWS = require("aws-sdk");
 
 const CreateExpense = async (req, res) => {
+  // First, we start a transaction from the connection and save it into a variable
   const t = await db.transaction();
   try {
+    // Then, we do some calls passing this transaction as an option
+
     const { amount, description, category } = req.body;
-    const userId = req.body.userId; // Assuming the userId is passed as a parameter
+
+    //using the params, we extract the id and update the userModel totalExpenses.
+    const userId = req.params.userId;
 
     // Update totalExpenses in userModel
     const user = await userModel.findByPk(userId);
+    //The total Expenses is the new amount plus existing expenses.
     const totalExpenses = Number(user.totalExpenses) + Number(amount);
+
     await user.update({ totalExpenses });
 
     const newTracker = await expenseModel.create(
@@ -21,29 +28,43 @@ const CreateExpense = async (req, res) => {
         amount,
         description,
         category,
-        userId,
+        // userId,
       },
       { transaction: t }
     );
+
+    // Update userId in expenseModel
+    await expenseModel.update(
+      { userId },
+      { where: { id: newTracker.id }, transaction: t }
+    );
+
+    // If the execution reaches this line, no errors were thrown.
+    //When we commit a transaction, it means that all the changes made within the transaction are permanently saved to the database.
     await t.commit();
     console.log(newTracker);
     res.status(200).json({
       success: true,
       data: newTracker,
     });
+
+    //When you roll back a transaction, it means that all the changes made within the transaction are discarded and the database is reverted to its previous state. The rollback() method is called instead of commit() to undo any changes made within the transaction. This ensures that the database is not permanently affected by the operations within the transaction.
   } catch (error) {
+    // If the execution reaches this line, an error was thrown.
+    // We rollback the transaction.
     await t.rollback();
     console.log(error);
     res.status(400).json({ message: "Internal server error" });
   }
 };
 
+// to get all expenses
 const GetAllExpense = async (req, res) => {
   try {
-    const gettracker = await expenseModel.findAll();
+    const getTracker = await expenseModel.findAll();
     res.status(200).json({
       success: true,
-      data: gettracker,
+      data: getTracker,
     });
   } catch (error) {
     console.log(error);
@@ -51,10 +72,12 @@ const GetAllExpense = async (req, res) => {
   }
 };
 
+//to get a single expense
 const GetSingleExpense = async (req, res) => {
   try {
-    const userId = req.body.userId;
-    const tracker = await expenseModel.findAll({ where: { userId: userId } });
+    const userId = req.params.userId;
+    const tracker = await expenseModel.findAll({ where: { userId } });
+    //if there is no expense/tracker found
     if (!tracker) {
       return res.status(404).json({ message: "tracker not found" });
     }
@@ -64,6 +87,7 @@ const GetSingleExpense = async (req, res) => {
   }
 };
 
+//to update the expense
 const UpdateExpense = async (req, res) => {
   try {
     const findExpense = await expenseModel.findByPk(req.params.id);
@@ -72,6 +96,8 @@ const UpdateExpense = async (req, res) => {
         message: "Expense not found",
       });
     }
+
+    //update the expense
     const { amount, description, category } = req.body;
     await expenseModel.update(
       { amount, description, category },
@@ -92,27 +118,27 @@ const UpdateExpense = async (req, res) => {
 
 const DeleteExpense = async (req, res) => {
   try {
-    const expenseId = req.params.id; // Get the expenseId from the URL parameter
-    const userId = req.body.userId; // Get the userId from the request body
+    const expenseId = req.params.id;
 
     // Get the amount of the expense to be deleted
     const expense = await expenseModel.findByPk(expenseId);
     const amount = expense.amount;
 
-    // Update totalExpenses in userModel
-    const user = await userModel.findByPk(userId);
-    const totalExpenses = Number(user.totalExpenses) - Number(amount);
-    await user.update({ totalExpenses });
-
     const deletedTracker = await expenseModel.destroy({
-      where: { id: expenseId, userId: userId },
+      where: { id: expenseId },
     });
     if (deletedTracker === 0) {
       return res.status(500).json({ message: "tracker not found" });
     }
+    // Update totalExpenses in userModel
+    const userId = expense.userId;
+    const user = await userModel.findByPk(userId);
+    const totalExpenses = Number(user.totalExpenses) - Number(amount);
+    await user.update({ totalExpenses });
+
     res.status(200).json({
       success: true,
-      data: "tracker has been deleted",
+      message: "expense has been deleted",
     });
   } catch (error) {
     console.log(error);
@@ -141,7 +167,7 @@ const ShowLeaderBoard = async (req, res) => {
       group: ["user.id"],
       order: [["total_cost", "DESC"]],
     });
-    // Calculate pagination values
+
     const startIndex = page * size;
     const endIndex = startIndex + size;
     const paginatedLeaderboard = leaderboard.slice(startIndex, endIndex);
@@ -187,7 +213,7 @@ const Download = async (req, res) => {
     const download = await userModel.findAll();
     console.log(download);
     const stringifiedExpenses = JSON.stringify(download);
-    const userId = req.body.userId;
+    const userId = req.params.userId;
     const filename = `Expense${userId}/${new Date()}.txt`;
 
     const fileUrl = uploadToS3(stringifiedExpenses, filename);

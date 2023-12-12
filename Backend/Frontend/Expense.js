@@ -8,8 +8,8 @@ let expenseList = document.getElementById("expenseList");
 
 let expenses = [];
 
-let userId = ""; // Declare a variable to store the userId
-let isPremiumUser = false; // Declare a variable to store the premium user status
+let userId = ""; // Declaring a variable to store the userId
+let isPremiumUser = false; // Declaring a variable to store the premium user status
 
 // Retrieve the userId and premium user status from local storage
 if (localStorage.userDetails) {
@@ -25,6 +25,7 @@ if (localStorage.expenses) {
 //
 //
 //
+
 //create a new expense
 addExpenseButton.addEventListener("click", async function () {
   let expenseAmount = expenseInput.value;
@@ -42,7 +43,7 @@ addExpenseButton.addEventListener("click", async function () {
     const token = JSON.parse(localStorage.getItem("userDetails")).token;
 
     const response = await axios.post(
-      "http://localhost:8000/expense/create",
+      `http://localhost:8000/expense/create/${expense.userId}`,
       expense,
       {
         headers: {
@@ -59,12 +60,14 @@ addExpenseButton.addEventListener("click", async function () {
   }
 
   expenses.push(expense);
+
   localStorage.expenses = JSON.stringify(expenses);
 
   expenseInput.value = "";
   descriptionInput.value = "";
   displayExpenses();
 });
+
 //
 //
 //
@@ -84,6 +87,7 @@ function displayExpenses() {
     deleteButton.addEventListener("click", async function () {
       try {
         const token = JSON.parse(localStorage.getItem("userDetails")).token;
+
         const deleteResponse = await axios.delete(
           `http://localhost:8000/expense/delete/${expense.id}`,
           {
@@ -100,6 +104,7 @@ function displayExpenses() {
         expenses.splice(i, 1);
 
         localStorage.removeItem("expenses");
+
         // Update the local storage
         localStorage.setItem("expenses", JSON.stringify(expenses));
 
@@ -177,6 +182,7 @@ function displayExpenses() {
   }
 }
 displayExpenses();
+
 //
 //
 //
@@ -206,11 +212,14 @@ async function download() {
   try {
     const token = JSON.parse(localStorage.getItem("userDetails")).token;
 
-    const response = await axios.get(`http://localhost:8000/expense/download`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await axios.get(
+      `http://localhost:8000/expense/download/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
     if (response.status === 200) {
       // The backend is essentially sending a download link
       // which if we open in browser, the file would download
@@ -233,7 +242,8 @@ function showIsPremiumUser() {
   const buyPremiumButton = document.getElementById("razorpay");
   buyPremiumButton.remove();
   // Update the UI to show the premium user message
-  document.getElementById("message").textContent = "YOU ARE A PREMIUM USER NOW";
+  document.getElementById("message").textContent =
+    "YOU ARE A PREMIUM USER NOW !!!";
   const leaderboardButton = document.createElement("button");
   leaderboardButton.textContent = "Show Leaderboard";
   leaderboardButton.className = "leaderboard";
@@ -245,8 +255,8 @@ function showIsPremiumUser() {
 
     if (screenWidth >= 1024) {
       // For big screens, restrict to certain pages
-      page = 0; // Change this to the desired page number
-      size = 10; // Change this to the desired number of expenses per page
+      page = 0; // we can  change this to the desired page number
+      size = 10; //we can Change this to the desired number of expenses per page
     } else {
       // For small screens, restrict to certain page
       page = 0;
@@ -276,7 +286,7 @@ function showIsPremiumUser() {
 
       getLeaderBoard.data.leaderboard.forEach((userDetails) => {
         const userElement = document.createElement("div");
-        userElement.textContent = `id: ${userDetails.id} name: ${userDetails.name} total_cost: ${userDetails.total_cost}`;
+        userElement.textContent = `Id: ${userDetails.id} Name: ${userDetails.name} Total_Cost: ${userDetails.total_cost}`;
         leaderboardElement.appendChild(userElement);
         userElement.className = "text";
       });
@@ -363,7 +373,7 @@ document
         orderId: response.data.orderId,
         handler: async function () {
           const res = await axios.post(
-            "http://localhost:8000/updateTransactionStatus",
+            `http://localhost:8000/updateTransactionStatus/${userId}`,
             {
               orderId: options.orderId,
               paymentId: response.razorpay_paymentId,

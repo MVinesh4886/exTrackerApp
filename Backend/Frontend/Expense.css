@@ -29,10 +29,10 @@
 }
 
 .title {
-  color: rgb(34, 12, 236);
+  color: rgb(251, 251, 252);
   text-align: center;
   margin: 0px 250px 0px 250px;
-  background-color: aqua;
+  background-color: rgb(34, 255, 5);
   box-shadow: 1px 2px 0px 0px rgb(230, 214, 214);
   border-radius: 10px;
 }
@@ -51,6 +51,10 @@
   border-color: rgb(241, 233, 222);
   border-radius: 5px;
   box-shadow: 1px 1px 1px 1px rgb(206, 203, 203);
+}
+
+.label {
+  color: rgb(12, 12, 12);
 }
 #addExpense {
   margin: 24px;
@@ -95,7 +99,7 @@
   margin: 4px;
 }
 .primary {
-  background-color: rgb(2, 180, 91);
+  background-color: rgb(34, 187, 54);
   color: white;
   margin: 4px;
 }
@@ -107,4 +111,5 @@
 }
 body {
   overflow: visible;
+  background-color: rgb(175, 219, 183);
 }
