@@ -1,58 +1,47 @@
 const expenseModel = require("../model/expenseModel");
-
 const userModel = require("../model/userModel");
 const sequelize = require("sequelize");
 const db = require("../config/database");
 const AWS = require("aws-sdk");
 
 const CreateExpense = async (req, res) => {
-  // First, we start a transaction from the connection and save it into a variable
-  const t = await db.transaction();
+  let transaction;
   try {
-    // Then, we do some calls passing this transaction as an option
+    transaction = await db.transaction();
 
     const { amount, description, category } = req.body;
-
-    //using the params, we extract the id and update the userModel totalExpenses.
-    const userId = req.params.userId;
-
-    // Update totalExpenses in userModel
-    const user = await userModel.findByPk(userId);
-    //The total Expenses is the new amount plus existing expenses.
-    const totalExpenses = Number(user.totalExpenses) + Number(amount);
-
-    await user.update({ totalExpenses });
+    const userId = req.user.id;
 
     const newTracker = await expenseModel.create(
       {
         amount,
         description,
         category,
-        // userId,
+        userId,
       },
-      { transaction: t }
+      { transaction }
     );
 
-    // Update userId in expenseModel
+    const user = await userModel.findByPk(userId);
+    const totalExpenses = Number(user.totalExpenses) + Number(amount);
+
+    await user.update({ totalExpenses }, { transaction });
+
     await expenseModel.update(
       { userId },
-      { where: { id: newTracker.id }, transaction: t }
+      { where: { id: newTracker.id }, transaction }
     );
 
-    // If the execution reaches this line, no errors were thrown.
-    //When we commit a transaction, it means that all the changes made within the transaction are permanently saved to the database.
-    await t.commit();
-    console.log(newTracker);
+    await transaction.commit();
+
     res.status(200).json({
       success: true,
-      data: newTracker,
+      expense: newTracker,
     });
-
-    //When you roll back a transaction, it means that all the changes made within the transaction are discarded and the database is reverted to its previous state. The rollback() method is called instead of commit() to undo any changes made within the transaction. This ensures that the database is not permanently affected by the operations within the transaction.
   } catch (error) {
-    // If the execution reaches this line, an error was thrown.
-    // We rollback the transaction.
-    await t.rollback();
+    if (transaction) {
+      await transaction.rollback();
+    }
     console.log(error);
     res.status(400).json({ message: "Internal server error" });
   }
@@ -75,13 +64,13 @@ const GetAllExpense = async (req, res) => {
 //to get a single expense
 const GetSingleExpense = async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const userId = req.user.id;
     const tracker = await expenseModel.findAll({ where: { userId } });
     //if there is no expense/tracker found
     if (!tracker) {
       return res.status(404).json({ message: "tracker not found" });
     }
-    res.json(tracker);
+    res.status(200).json({ data: tracker });
   } catch (error) {
     res.status(400).json({ message: "Internal server error" });
   }
@@ -213,7 +202,7 @@ const Download = async (req, res) => {
     const download = await userModel.findAll();
     console.log(download);
     const stringifiedExpenses = JSON.stringify(download);
-    const userId = req.params.userId;
+    const userId = req.user.id;
     const filename = `Expense${userId}/${new Date()}.txt`;
 
     const fileUrl = uploadToS3(stringifiedExpenses, filename);

@@ -27,10 +27,13 @@ const RegisterUser = async (req, res) => {
 
     const Token = generateToken(
       createUser.id,
-      createUser.emailId,
-      createUser.name
+      createUser.name,
+      createUser.emailId
     );
+    console.log(Token);
 
+    // createUser.token = Token;
+    // console.log(createUser.token);
     await createUser.save();
 
     const transporter = nodemailer.createTransport({
@@ -58,13 +61,13 @@ const RegisterUser = async (req, res) => {
       }
     });
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "User registered successfully, Please verify your email",
       id: createUser.id,
       name: createUser.name,
       emailId: createUser.emailId,
-      password: createUser.password,
+      // password: createUser.password,
       token: Token,
     });
   } catch (error) {
@@ -82,7 +85,7 @@ const LoginUser = async (req, res) => {
       where: { emailId },
     });
 
-    const isPremiumUser = null;
+    // let isPremiumUser = null;
 
     if (existingUser) {
       // if the existing user is not verified
@@ -97,24 +100,38 @@ const LoginUser = async (req, res) => {
         existingUser.password
       );
       if (isPasswordMatched) {
+        existingUser.isPremiumUser = false;
+        await existingUser.save();
         const Token = generateToken(
           existingUser.id,
           existingUser.name,
           existingUser.emailId,
-          isPremiumUser
+          existingUser.isPremiumUser
         );
 
         // Update the user's token in the database or local storage
         existingUser.token = Token;
         await existingUser.save();
+        const userId = existingUser.id;
+        console.log(`The current logged in User is : `, userId);
+
+        // Fetch the user's premium status from the database
+        // const isPremiumUser = existingUser.isPremiumUser;
+        // Set isPremiumUser to fals
+        // console.log(
+        //   `The current logged in PremiumUseris : `,
+        //   existingUser.isPremiumUser
+        // );
 
         return res.status(200).json({
           success: true,
           message: "User LoggedIn Successfully",
-          emailId: existingUser.emailId,
-          password: existingUser.password,
-          userId: existingUser.id,
-          token: Token,
+          data: {
+            id: userId,
+            // emailId: existingUser.emailId,
+            // password: existingUser.password,
+            token: Token,
+          },
         });
       }
     }
@@ -171,7 +188,7 @@ const ForgotPassword = async (req, res) => {
     }
 
     // Generate a unique token for the password reset link
-    const Token = generateToken(user.id);
+    const Token = generateToken({ userId: user.id });
     console.log(Token);
 
     // Save the token in the user's record in the database

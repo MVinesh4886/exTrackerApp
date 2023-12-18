@@ -10,10 +10,6 @@ const orderRoute = express.Router();
 
 orderRoute.get("/purchasePremium", isLogin, GetPurchasePremium);
 
-orderRoute.post(
-  "/updateTransactionStatus/:userId",
-  isLogin,
-  UpdateTransactionStatus
-);
+orderRoute.post("/updateTransactionStatus", isLogin, UpdateTransactionStatus);
 
 module.exports = orderRoute;

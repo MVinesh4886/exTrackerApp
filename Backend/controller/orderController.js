@@ -23,7 +23,6 @@ const GetPurchasePremium = async (req, res) => {
 
     res.json({
       success: true,
-      message: "You are a Premium User Now",
       orderId: order.id,
       order,
       key_id: razorpay.key_id,
@@ -40,7 +39,7 @@ const GetPurchasePremium = async (req, res) => {
 const UpdateTransactionStatus = async (req, res) => {
   try {
     const { paymentId, orderId } = req.body;
-    const userId = req.params.userId;
+    const userId = req.user.id;
     const findOrder = await orderModel.findOne({ where: { orderId } });
     await findOrder.update({
       paymentId,
@@ -49,12 +48,16 @@ const UpdateTransactionStatus = async (req, res) => {
       status: "SUCCESSFUL",
     });
 
+    console.log("The order made by UserId: ", userId);
+
     const user = await userModel.findByPk(userId);
     const updatedUser = await user.update({ isPremiumUser: true });
+    await updatedUser.save();
 
     const Token = generateToken(updatedUser);
     return res.status(202).json({
       success: true,
+      isPremiumUser: updatedUser.isPremiumUser,
       message: "Transactions updated successfully",
       token: Token,
     });

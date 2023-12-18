@@ -1,30 +1,49 @@
 let expenseInput = document.getElementById("expenseAmount");
 let descriptionInput = document.getElementById("description");
 let categoryInput = document.getElementById("category");
-
 let addExpenseButton = document.getElementById("addExpense");
-
 let expenseList = document.getElementById("expenseList");
 
 let expenses = [];
 
-let userId = ""; // Declaring a variable to store the userId
-let isPremiumUser = false; // Declaring a variable to store the premium user status
-
 // Retrieve the userId and premium user status from local storage
 if (localStorage.userDetails) {
-  const userDetails = JSON.parse(localStorage.userDetails);
-  userId = userDetails.userId;
-  isPremiumUser = userDetails.isPremiumUser || false;
+  JSON.parse(localStorage.getItem("userDetails"));
 }
 
 if (localStorage.expenses) {
   expenses = JSON.parse(localStorage.expenses);
 }
-//
-//
-//
-//
+
+// Function to fetch expenses from the database and update localStorage
+const fetchExpensesAndUpdateLocalStorage = async () => {
+  try {
+    const token = JSON.parse(localStorage.getItem("userDetails"));
+
+    const response = await axios.get(`http://localhost:8000/expense/created`, {
+      headers: {
+        Authorization: `Bearer ${token} `,
+      },
+    });
+
+    console.log(response.data);
+    const fetchedExpenses = response.data.data;
+    // console.log(fetchedExpenses);
+
+    // Update expenses array with fetched expenses
+    expenses = fetchedExpenses;
+
+    // Update localStorage with updated expenses array
+    localStorage.expenses = JSON.stringify(expenses);
+
+    console.log("Your Expenses :", expenses);
+  } catch (error) {
+    console.log(error);
+    alert("Failed to fetch expenses from the database");
+  }
+};
+// Call the function to fetch expenses and update localStorage
+fetchExpensesAndUpdateLocalStorage();
 
 //create a new expense
 addExpenseButton.addEventListener("click", async function () {
@@ -36,14 +55,13 @@ addExpenseButton.addEventListener("click", async function () {
     amount: expenseAmount,
     description,
     category,
-    userId,
   };
 
   try {
-    const token = JSON.parse(localStorage.getItem("userDetails")).token;
+    const token = JSON.parse(localStorage.getItem("userDetails"));
 
     const response = await axios.post(
-      `http://localhost:8000/expense/create/${expense.userId}`,
+      `http://localhost:8000/expense/create`,
       expense,
       {
         headers: {
@@ -52,26 +70,22 @@ addExpenseButton.addEventListener("click", async function () {
       }
     );
 
-    expense.id = response.data.data.id;
+    console.log(response.data);
+
     alert("Added expenses successfully to the database");
+    expense.id = response.data.expense.id;
+    console.log(expense.id);
   } catch (error) {
     console.log(error);
     alert("Request failed with status code 400");
   }
-
   expenses.push(expense);
-
   localStorage.expenses = JSON.stringify(expenses);
-
   expenseInput.value = "";
   descriptionInput.value = "";
   displayExpenses();
 });
 
-//
-//
-//
-//
 //After creating we display expenses, we need to create a new unordered list of Expenses, create delete and edit button with their functionality
 function displayExpenses() {
   expenseList.innerHTML = "";
@@ -86,7 +100,7 @@ function displayExpenses() {
     deleteButton.className = "Danger";
     deleteButton.addEventListener("click", async function () {
       try {
-        const token = JSON.parse(localStorage.getItem("userDetails")).token;
+        const token = JSON.parse(localStorage.getItem("userDetails"));
 
         const deleteResponse = await axios.delete(
           `http://localhost:8000/expense/delete/${expense.id}`,
@@ -99,11 +113,8 @@ function displayExpenses() {
 
         console.log(deleteResponse);
         alert("Delete response from the database successfully");
-
         // Remove the expense from the expenses array
         expenses.splice(i, 1);
-
-        localStorage.removeItem("expenses");
 
         // Update the local storage
         localStorage.setItem("expenses", JSON.stringify(expenses));
@@ -142,7 +153,7 @@ function displayExpenses() {
         expense.category = updatedCategory;
 
         try {
-          const token = JSON.parse(localStorage.getItem("userDetails")).token;
+          const token = JSON.parse(localStorage.getItem("userDetails"));
 
           const response = await axios.put(
             `http://localhost:8000/expense/put/${expense.id}`,
@@ -183,10 +194,6 @@ function displayExpenses() {
 }
 displayExpenses();
 
-//
-//
-//
-//
 //how to parse the jwt in the frontend, copied this from the google
 function parseJwt(token) {
   var base64Url = token.split(".")[1];
@@ -200,26 +207,19 @@ function parseJwt(token) {
       })
       .join("")
   );
-
   return JSON.parse(jsonPayload);
 }
-//
-//
-//
-//
+
 //download functionality for the aws s3 service
 async function download() {
   try {
-    const token = JSON.parse(localStorage.getItem("userDetails")).token;
+    const token = JSON.parse(localStorage.getItem("userDetails"));
 
-    const response = await axios.get(
-      `http://localhost:8000/expense/download/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await axios.get(`http://localhost:8000/expense/download`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     if (response.status === 200) {
       // The backend is essentially sending a download link
       // which if we open in browser, the file would download
@@ -232,10 +232,7 @@ async function download() {
     console.log(error);
   }
 }
-//
-//
-//
-//
+
 // After a successful purchase, the user will be shown as a premium user
 function showIsPremiumUser() {
   // Remove the "Buy Premium" button
@@ -262,14 +259,13 @@ function showIsPremiumUser() {
       page = 0;
       size = 5;
     }
-
     userLeaderboard(page, size);
     leaderboardButton.remove();
   });
 
   const userLeaderboard = async (page, size) => {
     try {
-      const token = JSON.parse(localStorage.getItem("userDetails")).token;
+      const token = JSON.parse(localStorage.getItem("userDetails"));
 
       const getLeaderBoard = await axios.get(
         `http://localhost:8000/expense/showleaderboard?page=${page}&size=${size}`,
@@ -286,7 +282,7 @@ function showIsPremiumUser() {
 
       getLeaderBoard.data.leaderboard.forEach((userDetails) => {
         const userElement = document.createElement("div");
-        userElement.textContent = `Id: ${userDetails.id} Name: ${userDetails.name} Total_Cost: ${userDetails.total_cost}`;
+        userElement.textContent = `Id: ${userDetails.id} Name: ${userDetails.name} Total_Expenses: ${userDetails.total_cost}`;
         leaderboardElement.appendChild(userElement);
         userElement.className = "text";
       });
@@ -320,34 +316,41 @@ function showIsPremiumUser() {
   };
 }
 
-const user = JSON.parse(localStorage.getItem("userDetails")).token;
+const user = JSON.parse(localStorage.getItem("userDetails"));
 const decodedUser = parseJwt(user);
 const userDetails = decodedUser.id;
 console.log(userDetails);
-//
-//
-//
-//
-//To check if the user is premium user or not.
+
+// To check if the user is premium user or not.
+// function checkIsPremimumUser() {
+//   const orderToken = JSON.parse(localStorage.getItem("userDetails"));
+//   if (orderToken) {
+//     const decodedToken = parseJwt(orderToken);
+//     console.log(decodedToken);
+//     console.log(decodedToken.id.isPremiumUser);
+//     console.log(decodedToken.id.id);
+//     if (
+//       decodedToken.id.isPremiumUser === true &&
+//       userDetails === decodedToken.id.id
+//     ) {
+//       showIsPremiumUser();
+//     }
+//   }
+// }
+
 function checkIsPremimumUser() {
-  const orderToken = JSON.parse(localStorage.getItem("Token"));
+  const orderToken = JSON.parse(localStorage.getItem("premiumUser"));
   if (orderToken) {
     const decodedToken = parseJwt(orderToken);
     console.log(decodedToken);
-    console.log(decodedToken.id.isPremiumUser);
+    console.log("The User Premium is: ", decodedToken.id.isPremiumUser);
     console.log(decodedToken.id.id);
-    if (
-      decodedToken.id.isPremiumUser === true &&
-      userDetails === decodedToken.id.id
-    ) {
+    if (decodedToken.id.isPremiumUser) {
       showIsPremiumUser();
     }
   }
 }
-//
-//
-//
-//
+
 // for razor pay,
 document
   .getElementById("razorpay")
@@ -355,7 +358,7 @@ document
     e.preventDefault();
 
     try {
-      const token = JSON.parse(localStorage.getItem("userDetails")).token;
+      const token = JSON.parse(localStorage.getItem("userDetails"));
 
       const response = await axios.get(
         `http://localhost:8000/purchasePremium`,
@@ -365,15 +368,14 @@ document
           },
         }
       );
-
-      console.log(response);
+      console.log(response.data);
 
       const options = {
         key: response.data.key_id,
         orderId: response.data.orderId,
         handler: async function () {
           const res = await axios.post(
-            `http://localhost:8000/updateTransactionStatus/${userId}`,
+            `http://localhost:8000/updateTransactionStatus`,
             {
               orderId: options.orderId,
               paymentId: response.razorpay_paymentId,
@@ -384,17 +386,14 @@ document
               },
             }
           );
-          console.log(res.data.token);
+          console.log(res.data);
 
           alert("You are a Premium user now");
 
-          localStorage.removeItem("Token");
-          localStorage.setItem("Token", JSON.stringify(res.data.token));
-
+          localStorage.setItem("premiumUser", JSON.stringify(res.data.token));
           checkIsPremimumUser();
         },
       };
-
       const rzp = new Razorpay(options);
       rzp.open();
     } catch (error) {
@@ -403,10 +402,7 @@ document
   });
 
 checkIsPremimumUser();
-//
-//
-//
-//
+
 // Add event listener to the logout button
 document.getElementById("logout").addEventListener("click", logout);
 // Function to logout and redirect to the login page

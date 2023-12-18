@@ -1,3 +1,7 @@
 .env
 node_modules
 expense.txt
+
+expensejs.txt
+jwt.txt
+userController.txt

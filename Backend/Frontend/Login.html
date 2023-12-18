@@ -54,20 +54,38 @@
             password,
           });
           console.log(response.data);
-          console.log(response.data.message);
-          if (response.data.status === 401) {
+          console.log(
+            "The logged in User token is: ",
+            response.data.data.token
+          );
+          // console.log(response.data.message);
+          if (response.data.success === false) {
             alert(response.data.message);
           } else {
-            const userDetails = {
-              emailId: response.data.emailId,
-              password: response.data.password,
-              userId: response.data.userId,
-              token: response.data.token,
-            };
+            // const userDetails = {
+            //   emailId: response.data.emailId,
+            //   // password: response.data.password,
+            //   userId: response.data.userId,
+            //   token: response.data.token,
+            // };
 
             // Store user details in local storage
-            localStorage.setItem("userDetails", JSON.stringify(userDetails));
+            localStorage.setItem(
+              "userDetails",
+              JSON.stringify(response.data.data.token)
+            );
 
+            // Retrieve user details from localStorage
+            const storedUserDetails = JSON.parse(
+              localStorage.getItem("userDetails")
+            );
+
+            // Access the emailId property from the stored user details
+            // const userId = storedUserDetails.data.id;
+
+            // Use the emailId as needed
+            // console.log(userId);
+            alert(response.data.message);
             window.location.href = "./Expense.html";
           }
         } catch (error) {

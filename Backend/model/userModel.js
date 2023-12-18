@@ -4,6 +4,12 @@ const db = require("../config/database");
 const { DataTypes } = Sequelize;
 
 const userModel = db.define("user", {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+    allowNull: false,
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
